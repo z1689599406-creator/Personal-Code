@@ -17,8 +17,12 @@ class SelfAttention2D(nn.Module):
         k = k.view(B, self.num_heads, C // self.num_heads, H * W)
         v = v.view(B, self.num_heads, C // self.num_heads, H * W)
 
+#       q.transpose(-2, -1): 维度变为 $(B, \text{heads}, N, d_k)$
+#       矩阵乘法: (B, \text{heads}, N, d_k) \times (B, \text{heads}, d_k, N) \rightarrow 结果 attn: $(B, \text{heads}, N, N)$
+#       物理意义: 这是一个“像素对像素”的相关性地图
+#       N*N代表了图中任意两个像素点之间的关系强度。
         attn = torch.softmax(torch.matmul(q.transpose(-2, -1), k) / math.sqrt(C // self.num_heads), dim=-1)
         out = torch.matmul(attn, v.transpose(-2, -1)).transpose(-2, -1)
         out = out.contiguous().view(B, C, H, W)
         out = self.proj_out(out)
-        return x + out  # residual connection
+        return x + out  # 残差连接确保了注意力模块只是在为原始图像特征添加“全局上下文”作为补充，极大地增强了训练的稳定性
